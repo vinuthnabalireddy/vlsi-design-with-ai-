@@ -1,0 +1,84 @@
+module alu_8bit (
+    input  [7:0]  InputA,
+    input  [7:0]  InputB,
+    input  [2:0]  OpCode,
+    output [15:0] OutALU,
+    output        COut
+);
+
+    reg [15:0] OutALU_reg;
+    reg        COut_reg;
+
+    assign OutALU = OutALU_reg;
+    assign COut   = COut_reg;
+
+    // Internal wider signals for arithmetic
+    wire [15:0] sum_ext;
+    wire [15:0] diff_ext;
+
+    assign sum_ext  = {8'b0, InputA} + {8'b0, InputB};
+    assign diff_ext = {8'b0, InputA} - {8'b0, InputB};
+
+    always @(*) begin
+        OutALU_reg = 16'd0;
+        COut_reg   = 1'b0;
+
+        case (OpCode)
+            3'b000: begin
+                // Addition: OutALU = A + B, COut = carry out
+                OutALU_reg = sum_ext[15:0];
+                COut_reg   = sum_ext[8]; // carry out from bit 7
+            end
+
+            3'b001: begin
+                // Subtraction: OutALU = A - B, COut = borrow (inverted carry)
+                OutALU_reg = diff_ext[15:0];
+                COut_reg   = ~diff_ext[8]; // simple borrow indication
+            end
+
+            3'b010: begin
+                // Bitwise AND
+                OutALU_reg = {8'b0, InputA & InputB};
+                COut_reg   = 1'b0;
+            end
+
+            3'b011: begin
+                // Bitwise OR
+                OutALU_reg = {8'b0, InputA | InputB};
+                COut_reg   = 1'b0;
+            end
+
+            3'b100: begin
+                // Bitwise XOR
+                OutALU_reg = {8'b0, InputA ^ InputB};
+                COut_reg   = 1'b0;
+            end
+
+            3'b101: begin
+                // Logical shift left InputA by 1
+                OutALU_reg = {8'b0, InputA << 1};
+                COut_reg   = InputA[7]; // shifted-out bit
+            end
+
+            3'b110: begin
+                // Logical shift right InputA by 1
+                OutALU_reg = {8'b0, InputA >> 1};
+                COut_reg   = InputA[0]; // shifted-out bit
+            end
+
+            3'b111: begin
+                // Pass InputA
+                OutALU_reg = {8'b0, InputA};
+                COut_reg   = 1'b0;
+            end
+
+            default: begin
+                OutALU_reg = 16'd0;
+                COut_reg   = 1'b0;
+            end
+        endcase
+    end
+
+endmodule
+
+   
