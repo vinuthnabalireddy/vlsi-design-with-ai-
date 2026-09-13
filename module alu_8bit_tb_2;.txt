@@ -1,0 +1,132 @@
+module alu_8bit_tb_2;
+
+    // Opcode parameters (must match ALU)
+    localparam OP_ADD  = 3'b000;
+    localparam OP_SUB  = 3'b001;
+    localparam OP_AND  = 3'b010;
+    localparam OP_OR   = 3'b011;
+    localparam OP_XOR  = 3'b100;
+    localparam OP_SHL  = 3'b101;
+    localparam OP_SHR  = 3'b110;
+    localparam OP_PASS = 3'b111;
+
+    // DUT signals
+    reg  [7:0]  InputA;
+    reg  [7:0]  InputB;
+    reg  [2:0]  OpCode;
+    wire [15:0] OutALU;
+    wire        COut;
+
+    // Instantiate ALU
+    alu_8bit uut (
+        .InputA (InputA),
+        .InputB (InputB),
+        .OpCode (OpCode),
+        .OutALU (OutALU),
+        .COut   (COut)
+    );
+
+    // Test statistics
+    integer tests_run;
+    integer tests_fail;
+
+    // Expected values
+    reg [15:0] expected_out;
+    reg        expected_cout;
+
+    // Display header
+    initial begin
+        $display("Time\t InputA  InputB  OpCode  OutALU(dec)  Exp(dec)  COut  ExpCout  Status");
+        $display("-------------------------------------------------------------------------------");
+    end
+
+    // Task to apply a test vector and check result
+    task apply_and_check;
+        input [7:0]  a;
+        input [7:0]  b;
+        input [2:0]  op;
+        input [15:0] exp_out;
+        input        exp_cout;
+        begin
+            InputA = a;
+            InputB = b;
+            OpCode = op;
+            #5; // allow combinational logic to settle
+
+            tests_run = tests_run + 1;
+
+            if ((OutALU !== exp_out) || (COut !== exp_cout)) begin
+                $display("%0t\t FAIL: A=%0d, B=%0d, Op=%b, OutALU=%0d (exp=%0d), COut=%b (exp=%b)",
+                         $time, a, b, op, OutALU, exp_out, COut, exp_cout);
+                tests_fail = tests_fail + 1;
+            end else begin
+                $display("%0t\t PASS: A=%0d, B=%0d, Op=%b, OutALU=%0d, COut=%b",
+                         $time, a, b, op, OutALU, COut);
+            end
+        end
+    endtask
+
+    // Stimulus and validation
+    initial begin
+        tests_run  = 0;
+        tests_fail = 0;
+
+        InputA = 0;
+        InputB = 0;
+        OpCode = 0;
+        #5;
+
+        // ---------- First set: InputA = 45, InputB = 38 ----------
+        InputA = 45;
+        InputB = 38;
+
+        // Opcode 000: ADD
+        // 45 + 38 = 83, no carry out from bit 7 (83 < 256)
+        apply_and_check(45, 38, OP_ADD, 83, 1'b0);
+
+        // Opcode 001: SUB
+        // 45 - 38 = 7
+        // In the ALU: diff_ext = {8'b0, A} - {8'b0, B}; COut = ~diff_ext[8]
+        // diff_ext[8] is 0 (no borrow), so COut = ~0 = 1
+        apply_and_check(45, 38, OP_SUB, 7, 1'b1);
+
+        // Opcode 110: SHR (A >> 1)
+        // 45 >> 1 = 22, COut = A[0] = 1 (45 = 0010_1101)
+        apply_and_check(45, 38, OP_SHR, 22, 1'b1);
+
+        // Opcode 111: PASS A
+        // OutALU = 45, COut = 0
+        apply_and_check(45, 38, OP_PASS, 45, 1'b0);
+
+        // ---------- Second set: InputA = 49, InputB = 10 ----------
+        InputA = 49;
+        InputB = 10;
+
+        // Opcode 010: AND
+        // 49 & 10 = 0b00110001 & 0b00001010 = 0b00000000 = 0
+        apply_and_check(49, 10, OP_AND, 0, 1'b0);
+
+        // Opcode 011: OR
+        // 49 | 10 = 0b00110001 | 0b00001010 = 0b00111011 = 59
+        apply_and_check(49, 10, OP_OR, 59, 1'b0);
+
+        // Opcode 100: XOR
+        // 49 ^ 10 = 0b00110001 ^ 0b00001010 = 0b00111011 = 59
+        apply_and_check(49, 10, OP_XOR, 59, 1'b0);
+
+        // Opcode 101: SHL (A << 1)
+        // 49 << 1 = 98, COut = A[7] = 0 (49 = 0011_0001)
+        apply_and_check(49, 10, OP_SHL, 98, 1'b0);
+
+        #10;
+
+        $display("-------------------------------------------------------------------------------");
+        $display("Tests run: %0d, Tests failed: %0d", tests_run, tests_fail);
+        if (tests_fail == 0)
+            $display("All tests PASSED.");
+        else
+            $display("Some tests FAILED. Check ALU implementation and expected values.");
+        $finish;
+    end
+
+endmodule
