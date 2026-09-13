@@ -1,0 +1,64 @@
+module alu_8bit_tb;
+
+    // Testbench signals
+    reg  [7:0]  InputA;
+    reg  [7:0]  InputB;
+    reg  [2:0]  OpCode;
+    wire [15:0] OutALU;
+    wire        COut;
+
+    // Instantiate the ALU (replace 'alu_8bit' with your actual module name if different)
+    alu_8bit uut (
+        .InputA (InputA),
+        .InputB (InputB),
+        .OpCode (OpCode),
+        .OutALU (OutALU),
+        .COut   (COut)
+    );
+
+    // Monitor all changes
+    initial begin
+        $display("Time\t InputA  InputB  OpCode  OutALU      COut");
+        $display("------------------------------------------------");
+        $monitor("%0t\t %d      %d      %b      %d (0x%h)   %b",
+                 $time, InputA, InputB, OpCode, OutALU, OutALU, COut);
+    end
+
+    // Apply test vectors
+    initial begin
+        // Initialize inputs
+        InputA = 0;
+        InputB = 0;
+        OpCode = 0;
+
+        #10;
+
+        // First set: InputA = 45, InputB = 38
+        InputA = 45;
+        InputB = 38;
+
+        // Test opcodes: 000, 001, 110, 111
+        OpCode = 3'b000; #10;
+        OpCode = 3'b001; #10;
+        OpCode = 3'b110; #10;
+        OpCode = 3'b111; #10;
+
+        // Second set: InputA = 49, InputB = 10
+        InputA = 49;
+        InputB = 10;
+
+        // Test opcodes: 010, 011, 100, 101
+        OpCode = 3'b010; #10;
+        OpCode = 3'b011; #10;
+        OpCode = 3'b100; #10;
+        OpCode = 3'b101; #10;
+
+        #10;
+        $display("------------------------------------------------");
+        $display("Simulation finished.");
+        $finish;
+    end
+
+endmodule
+
+
